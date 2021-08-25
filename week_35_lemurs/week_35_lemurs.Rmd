@@ -146,16 +146,19 @@ weight_preg <- weight %>%
 color_scale_2 <-  c("#003049", "#f77f00")
 
 p_weight_preg <- weight_preg %>% 
-  ggplot(aes(y = weight_g, x = preg_status)) +
-    geom_dotsinterval(
-      size = 2,
-      binwidth = 50) +
-    stat_halfeye(
+  ggplot(aes(y = weight_g, x = preg_status, color = preg_status, fill = preg_status)) +
+    stat_slab(
       scale = 0.3,
-      side = "left") +
+      side = "left",
+      alpha = 0.7,
+      color = "black") +
+    stat_dots(position = "dodge",
+              alpha = 0.5,
+              quantiles = 150) +
+    stat_pointinterval(color = "black") +
     scale_x_discrete(labels = function(x) str_wrap(x, width = 15)) +
-    #scale_fill_manual(values = color_scale_2) +
-    #scale_color_manual(values = color_scale_2) +
+    scale_fill_manual(values = color_scale_2) +
+    scale_color_manual(values = color_scale_2) +
     theme(
       legend.position = "none",
       panel.grid = element_line(size = 0.2, color = "#ced4da"),
@@ -176,6 +179,8 @@ p_weight_preg <- weight_preg %>%
          title = "Weight of lemurs",
          subtitle = "by pregnancy status.")
 p_weight_preg
+
+ggsave("lemur_preg.png", p_weight_preg, height = 7, width = 8, dpi = 300)
 ```
 
 
