@@ -1,0 +1,182 @@
+---
+title: "week35"
+author: "Tristan Caro"
+date: "8/24/2021"
+output: html_document
+---
+
+# Get the Data
+
+Read in with tidytuesdayR package 
+Install from CRAN via: `install.packages("tidytuesdayR")`
+This loads the readme and all the datasets for the week of interest
+
+Either ISO-8601 date or year/week works!
+
+Or read in the data manually:
+
+```
+lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
+```
+
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(ggtext)
+library(ggdist)
+
+lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
+
+theme_set(theme_minimal(base_size = 10))
+```
+
+# Latest recorded weight by specimen ID
+Source: https://twitter.com/leeolney3/status/1430085673025949696/photo/1
+@leeolney
+```{r}
+weight <- lemurs %>%
+  mutate(age_cat = case_when(age_category == "young_adult" ~ "Young-Adult",
+                             age_category == "IJ" ~ "Infant/Juvenile",
+                             age_category == "adult" ~ "Adult"),
+         gender = case_when(sex == "F" ~ "Female",
+                            sex == "M" ~ "Male")
+  ) %>% 
+  mutate(group = paste(age_cat, gender)) %>% 
+  mutate(group = factor(group, levels = c("Adult Female", 
+                                          "Adult Male", 
+                                          "Young-Adult Female", 
+                                          "Young-Adult Male",
+                                          "Infant/Juvenile Female",
+                                          "Infant/Juvenile Male",
+                                          "Infant/Juvenile NA"),
+                        ordered = TRUE)) %>% 
+  group_by(dlc_id) %>% 
+  slice(which.max(weight_date))
+
+```
+
+# Box plot with bar code strips
+Source: https://twitter.com/leeolney3/status/1430085673025949696/photo/1
+@leeolney
+```{r}
+p_weight = weight %>% 
+  ggplot(aes(y = weight_g, x = group, color = group)) +
+  geom_boxplot(
+    width = 0.2,
+    outlier.shape = NA,
+    fill = "#f4f4f2",
+    position = position_nudge(x = 0.2, y = 0)) +
+  geom_point(
+    shape = 95,
+    size = 6,
+    alpha = 0.2,
+    position = position_nudge(x = -0.1, y = 0)) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 15)) +
+  scale_color_manual(values = c("#003049", "#003049",
+                                "#f77f00", "#003049",
+                                "#003049", "#003049",
+                                "#003049")) +
+  theme(
+    legend.position = "none",
+    panel.grid = element_line(size = 0.2, color = "#ced4da"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title.x = element_markdown(size = 8.2, margin=margin(t=8)),
+    axis.title.y = element_markdown(size= 8.2, margin=margin(r=8)),
+    axis.text.x=element_text(size=7.5, margin = margin(t=-5)),
+    plot.caption = element_text(size = 7.5, color="#495057"),
+    plot.title.position = "plot",
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 8),
+    plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+    plot.background = element_rect(fill = "#f4f4f2", color = NA)) +
+  labs(x = "**Age and gender group**",
+       y = "**Latest weight recorded** (grams)",
+       caption = "#TidyTuesday Week 35 | Data from Duke Lemur Center",
+       title = "Weight of lemurs",
+       subtitle = "by age category and gender (latest date by specimen ID), wehre Young Adult Females have the highest median weight at 2155 grams.")
+```
+
+# Raincloud plot
+```{r}
+color_scale <-  c("#003049", "#003049",
+                  "#f77f00", "#003049",
+                   "#003049", "#003049",
+                   "#003049")
+
+p_weight_cloud = weight %>% 
+  ggplot(aes(y = weight_g, x = group, color = group, fill = group)) +
+  geom_dotsinterval(size = 2) +
+  stat_halfeye(
+    position = position_nudge(x = -0.1, y = 0)) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 15)) +
+  scale_color_manual(values = color_scale) +
+  scale_fill_manual(values = color_scale) +
+  theme(
+    legend.position = "none",
+    panel.grid = element_line(size = 0.2, color = "#ced4da"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title.x = element_markdown(size = 8.2, margin=margin(t=8)),
+    axis.title.y = element_markdown(size= 8.2, margin=margin(r=8)),
+    axis.text.x=element_text(size=7.5, margin = margin(t=-5)),
+    plot.caption = element_text(size = 7.5, color="#495057"),
+    plot.title.position = "plot",
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 8),
+    plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+    plot.background = element_rect(fill = "#f4f4f2", color = NA)) +
+  labs(x = "**Age and gender group**",
+       y = "**Latest weight recorded** (grams)",
+       caption = "#TidyTuesday Week 35 | Data from Duke Lemur Center",
+       title = "Weight of lemurs",
+       subtitle = "by age category and gender (latest date by specimen ID), wehre Young Adult Females have the highest median weight at 2155 grams.")
+p_weight_cloud
+```
+
+# Weight pregnant versus not pregnant
+Look into differences in weight based on pregnancy status. Filtering out male lemurs and juveniles.
+```{r}
+weight_preg <- weight %>% 
+  filter(group == "Adult Female")
+```
+
+```{r}
+color_scale_2 <-  c("#003049", "#f77f00")
+
+p_weight_preg <- weight_preg %>% 
+  ggplot(aes(y = weight_g, x = preg_status)) +
+    geom_dotsinterval(
+      size = 2,
+      binwidth = 50) +
+    stat_halfeye(
+      scale = 0.3,
+      side = "left") +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 15)) +
+    #scale_fill_manual(values = color_scale_2) +
+    #scale_color_manual(values = color_scale_2) +
+    theme(
+      legend.position = "none",
+      panel.grid = element_line(size = 0.2, color = "#ced4da"),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      axis.title.x = element_markdown(size = 8.2, margin=margin(t=8)),
+      axis.title.y = element_markdown(size= 8.2, margin=margin(r=8)),
+      axis.text.x=element_text(size=7.5, margin = margin(t=-5)),
+      plot.caption = element_text(size = 7.5, color="#495057"),
+      plot.title.position = "plot",
+      plot.title = element_text(face = "bold", size = 13),
+      plot.subtitle = element_text(size = 8),
+      plot.margin = unit(c(.5, .5, .5, .5), "cm"),
+      plot.background = element_rect(fill = "#f4f4f2", color = NA)) +
+    labs(x = "**Pregnancy Status**",
+         y = "**Latest weight recorded** (grams)",
+         caption = "#TidyTuesday Week 35 | Data from Duke Lemur Center",
+         title = "Weight of lemurs",
+         subtitle = "by pregnancy status.")
+p_weight_preg
+```
+
+
+
