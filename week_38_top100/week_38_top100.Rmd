@@ -1,0 +1,65 @@
+---
+title: "Billboard Top 100"
+author: "Tristan Caro"
+date: "9/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+```{r, include=FALSE}
+library(tidyverse)
+library(ggdist)
+library(showtext)
+```
+
+# Import Data
+```{r}
+# Get the Data
+
+# Read in with tidytuesdayR package 
+# Install from CRAN via: install.packages("tidytuesdayR")
+# This loads the readme and all the datasets for the week of interest
+
+# Either ISO-8601 date or year/week works!
+
+tuesdata <- tidytuesdayR::tt_load('2021-09-14')
+tuesdata <- tidytuesdayR::tt_load(2021, week = 38)
+
+billboard <- tuesdata$billboard
+audio <- tuesdata$audio_features
+```
+
+```{r}
+explicitness_scale = c("#de3c14", "#59e3bc")
+
+p_explicit <- audio %>% 
+  filter(!is.na(spotify_track_explicit)) %>% 
+  mutate(spotify_track_explicit = case_when(
+    spotify_track_explicit == TRUE ~ "Explicit",
+    spotify_track_explicit == FALSE ~ "Not Explicit")) %>% 
+  ggplot(aes(x = spotify_track_explicit, 
+             y = spotify_track_popularity, 
+             color = spotify_track_explicit,
+             fill = spotify_track_explicit)) +
+  stat_dots(position = "dodge") +
+  stat_pointinterval(color = "black") +
+  labs(legend = "",
+       y = "Spotify Popularity Score",
+       title = "Are explicit songs more popular?",
+       caption = "Source: Data.World | #TidyTuesday | @tris_caro") +
+  scale_color_manual(values = explicitness_scale) +
+  theme_classic() +
+  theme(axis.line.x = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+p_explicit
+
+#ggsave("p_explicit.png", p_explicit, dpi = 300, height = 8, width = 8)
+```
+
