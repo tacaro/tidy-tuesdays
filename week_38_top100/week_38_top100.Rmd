@@ -14,6 +14,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggdist)
 library(showtext)
+library(ggsignif)
+library(ggpubr)
+library(ggfortify)
+library(ggbiplot)
+library(ggsci)
+library(reticulate)
 ```
 
 # Import Data
@@ -26,12 +32,29 @@ library(showtext)
 
 # Either ISO-8601 date or year/week works!
 
-tuesdata <- tidytuesdayR::tt_load('2021-09-14')
-tuesdata <- tidytuesdayR::tt_load(2021, week = 38)
+# Use the following on first run
+# tuesdata <- tidytuesdayR::tt_load('2021-09-14')
+# tuesdata <- tidytuesdayR::tt_load(2021, week = 38)
+# billboard <- tuesdata$billboard
+# audio <- tuesdata$audio_features
+# write_csv(billboard, "data/billboard.csv")
+# write_csv(audio, "data/audio.csv")
 
-billboard <- tuesdata$billboard
-audio <- tuesdata$audio_features
+# Use this once you've downloaded the data
+
+billboard <- read_csv("data/billboard.csv")
+audio <- read_csv("data/audio.csv")
 ```
+
+```{r}
+audio_genres <- audio$spotify_genre
+test <- audio_genres[5]
+test
+
+reticulate::py_to_r(test)
+```
+
+
 
 ```{r}
 explicitness_scale = c("#de3c14", "#59e3bc")
@@ -45,13 +68,25 @@ p_explicit <- audio %>%
              y = spotify_track_popularity, 
              color = spotify_track_explicit,
              fill = spotify_track_explicit)) +
-  stat_dots(position = "dodge") +
+  stat_dots(position = "dodge",
+            size = 0.5) +
   stat_pointinterval(color = "black") +
+  stat_signif(
+    comparisons = list(c("Explicit", "Not Explicit")),
+    map_signif_level = TRUE,
+    color = "black",
+    textsize = 6,
+    ) +
+  stat_compare_means(label.x = 1.37,
+                     label.y = 100,
+                     size = 3) +
   labs(legend = "",
        y = "Spotify Popularity Score",
-       title = "Are explicit songs more popular?",
-       caption = "Source: Data.World | #TidyTuesday | @tris_caro") +
+       title = "Is explicit music more popular?",
+       caption = "Source: Data.World | #TidyTuesday | @tris_caro",
+       subtitle = "") +
   scale_color_manual(values = explicitness_scale) +
+  coord_cartesian(ylim = c(0, 110)) +
   theme_classic() +
   theme(axis.line.x = element_blank(),
         axis.line.y = element_blank(),
@@ -61,5 +96,37 @@ p_explicit <- audio %>%
 p_explicit
 
 #ggsave("p_explicit.png", p_explicit, dpi = 300, height = 8, width = 8)
+```
+
+```{r}
+audio_cleaned_full <- audio %>% 
+  drop_na() %>% 
+  filter(spotify_track_popularity > 90) %>% 
+  mutate(spotify_track_popularity_bool = spotify_track_popularity > 80) %>% 
+  select(-c(time_signature, tempo, valence, mode))  # don't want to compare these
+
+audio_cleaned_numeric <- audio_cleaned_full %>% 
+  select_if(is.numeric) # pass only rows w/ numeric values to PCA analysis
+
+pca_audio <- prcomp(audio_cleaned_numeric)
+```
+
+```
+pca_audio %>% autoplot(data = audio_cleaned_full,
+                       loadings = TRUE,
+                       loadings.label = TRUE,
+                       loadings.label.size = 2,
+                       colour = 'spotify_track_popularity_bool')
+```
+
+```{r}
+pca_audio %>% ggbiplot(groups = factor(audio_cleaned_full$spotify_track_explicit),
+                       ellipse = TRUE, circle = TRUE) +
+  scale_color_npg() +
+  theme_classic() +
+  theme(legend.direction = 'horizontal', 
+        legend.position = 'top',
+        axis.line = element_blank(),
+        )
 ```
 
