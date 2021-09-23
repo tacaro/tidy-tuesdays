@@ -1,0 +1,58 @@
+---
+title: "week_39_emmys"
+author: "Tristan Caro"
+date: "Last knitted `r format(Sys.Date(), '%d %b %Y')`"
+output:
+  html_document: 
+    df_print: paged
+    number_sections: yes
+    toc: yes
+    toc_float: true
+    toc_depth: 3
+    code_folding: show
+editor_options:
+  chunk_output_type: console # switch to 'inline' if preferred
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Get the Data
+```{r}
+# Get the Data
+
+# Read in with tidytuesdayR package 
+# Install from CRAN via: install.packages("tidytuesdayR")
+# This loads the readme and all the datasets for the week of interest
+
+# Either ISO-8601 date or year/week works!
+
+# tuesdata <- tidytuesdayR::tt_load('2021-09-21')
+# tuesdata <- tidytuesdayR::tt_load(2021, week = 39)
+# Create a cache:
+# saveRDS(nominees, file = "nominees.rds")
+
+# Read from cache
+
+nominees <- tuesdata$nominees
+
+# Or read in the data manually
+
+# nominees <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-21/nominees.csv')
+
+```
+
+```{r}
+summarized <- nominees %>% 
+  group_by(distributor, type, year) %>% 
+  summarize(count = n())
+```
+
+
+
+
+
+
+
+
