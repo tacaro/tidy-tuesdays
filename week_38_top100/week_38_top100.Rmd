@@ -20,6 +20,7 @@ library(ggfortify)
 library(ggbiplot)
 library(ggsci)
 library(reticulate)
+library(plotly)
 ```
 
 # Import Data
@@ -47,11 +48,14 @@ audio <- read_csv("data/audio.csv")
 ```
 
 ```{r}
-audio_genres <- audio$spotify_genre
-test <- audio_genres[5]
-test
+# Turn genres into a proper vector
+audio_w_genres <- audio %>% 
+mutate(
+   audio_genre = spotify_genre %>% 
+     str_remove_all("(^ *\\['?)|('?\\] *$)") %>% 
+     str_split("', ?'")) %>%
+unnest(audio_genre) %>% filter(nchar(audio_genre) > 0)
 
-reticulate::py_to_r(test)
 ```
 
 
@@ -101,7 +105,7 @@ p_explicit
 ```{r}
 audio_cleaned_full <- audio %>% 
   drop_na() %>% 
-  filter(spotify_track_popularity > 90) %>% 
+  #filter(spotify_track_popularity > 90) %>% 
   mutate(spotify_track_popularity_bool = spotify_track_popularity > 80) %>% 
   select(-c(time_signature, tempo, valence, mode))  # don't want to compare these
 
@@ -129,4 +133,83 @@ pca_audio %>% ggbiplot(groups = factor(audio_cleaned_full$spotify_track_explicit
         axis.line = element_blank(),
         )
 ```
+
+
+```{r}
+
+audio_lm <- lm(data = audio_w_genres, loudness~danceability)
+
+audio_w_genres %>% 
+  ggplot(aes(x = loudness,
+             y = danceability, 
+             color = audio_genre)) +
+  geom_smooth(method = "lm",
+              color = "black",
+              size = 0.2,
+              alpha = 0.5) +
+  geom_point(size = 0.1) +
+  coord_polar() +
+  labs(title = "Louder music more dance-y?",
+       caption = "Source: Data.World | #TidyTuesday | @tris_caro") +
+  scale_color_viridis_d(option = "plasma") +
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank())
+```
+
+
+```{r}
+genre_count <- audio_w_genres %>%
+  summarize(n = count(audio_genre))
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+#library(camcorder)
+
+#gg_record(dir = "temp", device = "png", width = 15, height = 12, units = "in", dpi = 320)
+
+billboard <- read_csv("data/billboard.csv")
+audio_features <- read_csv("data/audio.csv")
+
+billb_feat <- billboard %>% 
+  left_join(audio_features) %>% 
+  distinct(week_id, song, song_id, week_position, spotify_genre) %>% 
+  mutate(
+    week_id = mdy(week_id),
+    year = year(week_id),
+    spotify_genre = str_remove_all(spotify_genre, "\\[|\\]|'|\""),
+    spotify_genre = str_split(spotify_genre, ", ")
+    ) %>% 
+  filter(spotify_genre != "" & !is.na(spotify_genre)) %>% 
+  unnest(spotify_genre) %>% 
+  group_by(year, spotify_genre) %>% 
+  dplyr::count(year, spotify_genre)
+
+```
+
+```{r}
+f1 = "Fira Sans Compressed"
+f2 = "Futura"
+
+ggplot(billb_feat, aes(x = year, y = n, fill = spotify_genre)) +
+  geom_bar(position = "fill", stat = "identity", width = 1) +
+  geom_text(aes(label = spotify_genre, size = n), position = position_fill(vjust = 0.5), check_overlap = TRUE, family = f1, color = "grey10") +
+  scale_fill_viridis_d(option = "turbo", begin = 0.05, end = 0.95) +
+  scale_size_continuous(range = c(0.4, 5)) +
+  scale_x_continuous(breaks = seq(1960, 2020, 5)) +
+  coord_cartesian(expand = FALSE, clip = "off") +
+  labs(
+    title = "Music genres of the Billboard Hot 100",
+    subtitle = "Proportion of all song genres by year according to Spotify",
+    caption = "Source: Data.World, Billboard.com and Spotify · Graphic: Georgios Karamanis"
+  ) +
+  theme_void()
+```
+
+
 
