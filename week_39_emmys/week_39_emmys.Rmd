@@ -34,8 +34,10 @@ knitr::opts_chunk$set(echo = TRUE)
 # saveRDS(nominees, file = "nominees.rds")
 
 # Read from cache
+nominees <- readRDS("nominees.rds")
 
-nominees <- tuesdata$nominees
+
+# nominees <- tuesdata$nominees
 
 # Or read in the data manually
 
@@ -43,16 +45,126 @@ nominees <- tuesdata$nominees
 
 ```
 
+# Libraries
+```{r}
+library(tidyverse)
+library(ggridges)
+library(ggsci)
+library(ggdist)
+```
+
+# Data Subsetting and Cleaning
 ```{r}
 summarized <- nominees %>% 
   group_by(distributor, type, year) %>% 
   summarize(count = n())
+
+# Get 2010 - present
+summarized_2000_onward <- summarized %>% 
+  filter(year > 2000)
+```
+
+```{r}
+summarized_2000_onward <- summarized_2000_onward %>% 
+  mutate(distributor = case_when(
+    str_detect(distributor, "AMC") ~ "AMC",
+    str_detect(distributor, "Apple") ~ "Apple",
+    str_detect(distributor, "Bravo") ~ "Bravo",
+    str_detect(distributor, "CBS") ~ "CBS",
+    str_detect(distributor, "CNN") ~ "CNN",
+    str_detect(distributor, "ComedyCentral.com") ~ "Comedy Central",
+    str_detect(distributor, "Comedy Central") ~ "Comedy Central",
+    str_detect(distributor, "Disney") ~ "Disney",
+    str_detect(distributor, "Facebook") ~ "Facebook",
+    str_detect(distributor, "FunnyOrDie") ~ "FunnyOrDie",
+    str_detect(distributor, "HBO") ~ "HBO",
+    str_detect(distributor, "National Geographic") ~ "National Geographic",
+    str_detect(distributor, "NBC") ~ "NBC",
+    str_detect(distributor, "Oculus") ~ "Oculus",
+    str_detect(distributor, "Yahoo") ~ "Yahoo",
+    TRUE ~ distributor
+  )) %>% 
+  mutate(netflix_or_hbo = case_when(
+    distributor == "HBO" ~ "HBO",
+    distributor == "Netflix" ~ "Netflix",
+    TRUE ~ "Other"))
+
+# Add proportion data
+summarized_2000_onward_cln <- summarized_2000_onward %>% 
+  group_by(year) %>% 
+  mutate(total = sum(count)) %>% 
+  group_by(distributor, year) %>% 
+  summarize(prop = count / total) %>% 
+  mutate(netflix_or_hbo = case_when(
+    distributor == "HBO" ~ "HBO",
+    distributor == "Netflix" ~ "Netflix",
+    TRUE ~ "Other"))
+              
+```
+
+```{r}
+# Stacked Bar Chart
+
+hbo_netflix_other_color <- c("#0a007a", "#7a0000", "darkgray")
+
+summarized_2000_onward_cln %>% 
+  ggplot(
+  aes(x = year, 
+      y = prop, 
+      color = netflix_or_hbo,
+      fill = netflix_or_hbo)) +
+  geom_col() +
+  scale_color_manual(values = hbo_netflix_other_color) +
+  scale_fill_manual(values = hbo_netflix_other_color) +
+  theme_classic() +
+  labs(x = "Year",
+       y = "Proportion of Nominations & Awards",
+       title = "Netflix Rising",
+       subtitle = "HBO steadily holds roughly 1/5th of Emmy noms and wins",
+       caption = "#TidyTuesday | @tris_caro") +
+  theme(legend.position = "bottom",
+        axis.line = element_blank(),
+        axis.ticks.y = element_blank()
+        )
+```
+
+```{r}
+# Let's try another kind of plot
+
+summarized_2000_onward_cln %>%
+  ggplot(
+  aes(x = year,
+      y = prop, 
+      color = netflix_or_hbo, 
+      fill = netflix_or_hbo)) +
+  stat_halfeye(alpha = 0.5) +
+  geom_point(alpha = 0.3,
+             size = 1) +
+  # geom_smooth(method = "lm",
+  #             se = FALSE) +
+  coord_polar(start = 1.57*3, theta = "y") +
+  scale_color_manual(values = hbo_netflix_other_color) +
+  scale_fill_manual(values = hbo_netflix_other_color) +
+  labs(title = "Netflix Rising",
+       subtitle = "Distribution of nominations per year",
+       caption = "Year is increasing distance from center \n
+       Rotation from 0˚ is increasing number of nominations \n
+       #TidyTuesday | @tris_caro") +
+  theme_classic() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.title = element_blank(),
+        legend.title = element_blank())
 ```
 
 
 
 
 
-
-
+```{r}
+summarized_2000_onward %>% ggplot(aes(x = year, y = count, color = netflix_or_hbo)) +
+  geom_point() +
+  
+```
 
