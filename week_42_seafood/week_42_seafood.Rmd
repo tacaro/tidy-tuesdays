@@ -1,0 +1,49 @@
+---
+title: "week_42_seafood"
+author: "Tristan Caro"
+date: "10/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+# Get the data
+```{r}
+# Get the data
+tuesdata <- tidytuesdayR::tt_load('2021-10-12')
+tuesdata <- tidytuesdayR::tt_load(2021, week = 42)
+
+
+fish_stocks_w_sustainable <- tuesdata$`fish-stocks-within-sustainable-levels`
+```
+
+# Plot
+```{r}
+fish_stocks_w_sustainable %>% filter(Entity == "World") %>% 
+  ggplot(aes(x = Year, color = Entity)) +
+  geom_col(aes(y = `Share of fish stocks that are overexploited`),
+           position = "dodge",
+           color = "red",
+           fill = "red") +
+  geom_col(aes(y = -`Share of fish stocks within biologically sustainable levels (FAO, 2020)`),
+           color = "dark blue",
+           fill = "dark blue") +
+  geom_hline(yintercept = 0,
+             color = "black") +
+  labs(title = "Share of fish stocks that are overexploited",
+       caption = "Source: Our World in Data | #tidytuesday | @tris_caro") +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+  )
+
+
+```
+
