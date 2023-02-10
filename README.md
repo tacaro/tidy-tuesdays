@@ -10,3 +10,5 @@
 
 **Week 39: Emmys**
 - Comparing cartesian versus polar coordinate plots
+
+Week 40: I'm working on stock data
